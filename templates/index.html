@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emmie's AI Assistant</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body>
+    <div class="gradient-bg">
+        <div class="gradients-container">
+            <div class="g1"></div>
+            <div class="g2"></div>
+            <div class="g3"></div>
+            <div class="g4"></div>
+            <div class="g5"></div>
+        </div>
+
+        <div class="container">
+            <header class="header">
+                <div class="header-content">
+                    <div class="title">
+                        <h1>Emmie's AI</h1>
+                        <p>Query me like a champ — powered by Gemini 2.5 Pro</p>
+                    </div>
+                    <div class="status">
+                        <div class="status-dot"></div>
+                        <span>Ready</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="messages" id="messages">
+                <div class="message ai">
+                    <div class="avatar">✦</div>
+                    <div class="bubble ai">
+                        <div class="content">
+                            <p>Hello! I'm Emmie.<br>Ask me anything at any time.</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="bottom-area">
+                <div class="input-container">
+                    <input type="text" id="userInput" placeholder="Ask Emmie something..." autocomplete="off" autofocus />
+                    <button id="sendBtn">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+                
+                <!-- REQUIRED FOOTER -->
+                <div class="project-credits">
+                    Project by Emmanuel Okolo • Matric No: 23CG034116
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const messages = document.getElementById('messages');
+        const input = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        const addMessage = (text, type, processedText = null) => {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            
+            if (type === 'user') {
+                msg.innerHTML = `<div class="bubble user">${text}</div>`;
+            } else {
+                // Prepare AI bubble with typing indicator
+                let processedHtml = '';
+                if (processedText) {
+                    processedHtml = `<div class="processed-info"><i class="fa-solid fa-gear"></i> NLP Processed: <span class="mono">${processedText}</span></div>`;
+                }
+
+                msg.innerHTML = `
+                    <div class="avatar">✦</div>
+                    <div class="bubble ai">
+                        <div class="typing"><span></span><span></span><span></span></div>
+                        <div class="response-container" style="display:none">
+                            ${processedHtml}
+                            <div class="content">${marked.parse(text)}</div>
+                        </div>
+                    </div>`;
+            }
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+            return msg;
+        };
+
+        const send = async () => {
+            const q = input.value.trim();
+            if (!q) return;
+
+            addMessage(q, 'user');
+            input.value = '';
+            
+            // Add placeholder AI message
+            const loadingMsg = addMessage('', 'ai');
+
+            try {
+                const res = await fetch('/ask', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({question: q}) 
+                });
+                const data = await res.json();
+                
+                const container = loadingMsg.querySelector('.response-container');
+                const typing = loadingMsg.querySelector('.typing');
+
+                if (data.error) {
+                    container.innerHTML = `<em style="color:#ff6b6b">Error: ${data.error}</em>`;
+                } else {
+                    // Inject content
+                    container.innerHTML = `
+                        <div class="processed-info">
+                            <i class="fa-solid fa-code"></i> NLP Input: <span class="mono">${data.processed}</span>
+                        </div>
+                        <div class="content">${marked.parse(data.answer)}</div>
+                    `;
+                }
+                typing.style.display = 'none';
+                container.style.display = 'block';
+                messages.scrollTop = messages.scrollHeight;
+
+            } catch (err) {
+                const container = loadingMsg.querySelector('.response-container');
+                loadingMsg.querySelector('.typing').style.display = 'none';
+                container.innerHTML = '<em style="color:#ff6b6b">Connection Error</em>';
+                container.style.display = 'block';
+            }
+        };
+
+        sendBtn.onclick = send;
+        input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); send(); } };
+    </script>
+</body>
+</html>
